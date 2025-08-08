@@ -20,6 +20,10 @@ function handleDatabaseError(error: any, operation: string) {
 // Test database connection
 export async function testConnection() {
   try {
+    console.log('Testing Supabase connection...')
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing')
+    console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing')
+    
     const { data, error } = await supabase
       .from('churches')
       .select('count')
@@ -29,6 +33,7 @@ export async function testConnection() {
       console.error('Connection test failed:', error)
       return false
     }
+    console.log('Connection test successful')
     return true
   } catch (error) {
     console.error('Connection test error:', error)
