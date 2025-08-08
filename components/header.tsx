@@ -38,7 +38,8 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder.svg" alt="User" />
+                {/* Cambiado de placeholder a una imagen real o iniciales */}
+                <AvatarImage src="/church-logo.png" alt="Church" />
                 <AvatarFallback>WL</AvatarFallback>
               </Avatar>
             </Button>
