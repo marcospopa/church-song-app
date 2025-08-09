@@ -6,24 +6,23 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Search, Plus, MoreHorizontal, Edit, Trash, Eye, Mail, Phone } from 'lucide-react'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Search, Plus, MoreHorizontal, Edit, Trash, Eye, Mail, Phone } from "lucide-react"
 import Link from "next/link"
 import { membersApi } from "@/lib/database"
 import type { Member } from "@/lib/supabase"
+import MemberPreviewModal from "@/components/modals/member-preview-modal"
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
@@ -31,6 +30,12 @@ export default function MembersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [loading, setLoading] = useState(true)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null)
+
+  // Preview modal
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewMemberId, setPreviewMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     loadMembers()
@@ -45,29 +50,35 @@ export default function MembersPage() {
       const data = await membersApi.getAll()
       setMembers(data)
     } catch (error) {
-      console.error('Error loading members:', error)
+      console.error("Error loading members:", error)
     } finally {
       setLoading(false)
     }
   }
 
   function filterMembers() {
-    let filtered = members.filter(member => {
-      const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (member.role && member.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           (member.instruments && member.instruments.some(inst => inst.toLowerCase().includes(searchTerm.toLowerCase())))
+    const filtered = members.filter((member) => {
+      const matchesSearch =
+        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (member.role && member.role.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (member.instruments && member.instruments.some((inst) => inst.toLowerCase().includes(searchTerm.toLowerCase())))
       const matchesStatus = selectedStatus === "All" || member.status === selectedStatus
       return matchesSearch && matchesStatus
     })
     setFilteredMembers(filtered)
   }
 
-  async function deleteMember(id: string) {
+  async function confirmDelete() {
+    if (!memberToDelete) return
     try {
-      await membersApi.delete(id)
-      setMembers(members.filter(member => member.id !== id))
+      await membersApi.delete(memberToDelete.id)
+      setMembers(members.filter((m) => m.id !== memberToDelete.id))
     } catch (error) {
-      console.error('Error deleting member:', error)
+      console.error("Error deleting member:", error)
+      alert("No se pudo eliminar el miembro.")
+    } finally {
+      setDeleteOpen(false)
+      setMemberToDelete(null)
     }
   }
 
@@ -108,7 +119,6 @@ export default function MembersPage() {
         </Button>
       </div>
 
-      {/* Search and Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Search & Filter</CardTitle>
@@ -124,23 +134,21 @@ export default function MembersPage() {
                 className="pl-10"
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Status: {selectedStatus}
+            <div className="flex items-center gap-2">
+              {["All", "active", "inactive"].map((s) => (
+                <Button
+                  key={s}
+                  variant={selectedStatus === s ? "secondary" : "outline"}
+                  onClick={() => setSelectedStatus(s)}
+                >
+                  {s[0].toUpperCase() + s.slice(1)}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSelectedStatus("All")}>All</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus("active")}>Active</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus("inactive")}>Inactive</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Members Table */}
       <Card>
         <CardHeader>
           <CardTitle>Members ({filteredMembers.length})</CardTitle>
@@ -167,7 +175,12 @@ export default function MembersPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={member.avatar_url || "/placeholder.svg"} alt={member.name} />
-                          <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          <AvatarFallback>
+                            {member.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">{member.name}</div>
@@ -175,14 +188,14 @@ export default function MembersPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{member.role || 'No role assigned'}</TableCell>
+                    <TableCell>{member.role || "No role assigned"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {member.instruments?.map((instrument) => (
                           <Badge key={instrument} variant="secondary" className="text-xs">
                             {instrument}
                           </Badge>
-                        )) || 'No instruments'}
+                        )) || "No instruments"}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -198,9 +211,7 @@ export default function MembersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={member.status === "active" ? "default" : "secondary"}>
-                        {member.status}
-                      </Badge>
+                      <Badge variant={member.status === "active" ? "default" : "secondary"}>{member.status}</Badge>
                     </TableCell>
                     <TableCell>{member.join_date}</TableCell>
                     <TableCell>
@@ -211,17 +222,27 @@ export default function MembersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setPreviewMemberId(member.id)
+                              setPreviewOpen(true)
+                            }}
+                          >
                             <Eye className="mr-2 h-4 w-4" />
-                            View Profile
+                            View
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                          <DropdownMenuItem asChild>
+                            <Link href={`/members/${member.id}`} className="flex items-center">
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => deleteMember(member.id)}
+                            onClick={() => {
+                              setMemberToDelete(member)
+                              setDeleteOpen(true)
+                            }}
                           >
                             <Trash className="mr-2 h-4 w-4" />
                             Remove
@@ -243,6 +264,27 @@ export default function MembersPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar miembro?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <MemberPreviewModal
+        open={previewOpen}
+        memberId={previewMemberId}
+        onOpenChange={(o) => {
+          if (!o) setPreviewOpen(false)
+        }}
+      />
     </div>
   )
 }

@@ -1,13 +1,19 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React from "react"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Music, Users, FileText, Clock, TrendingUp, AlertCircle, Database, Wifi, WifiOff } from 'lucide-react'
+import { Calendar, Music, Users, FileText, AlertCircle, Database, WifiOff } from "lucide-react"
 import Link from "next/link"
 import { dashboardApi, eventsApi, testConnection } from "@/lib/database"
-import type { Song, Event } from "@/lib/supabase"
+import type { Song } from "@/lib/supabase"
 
 interface DashboardStats {
   totalSongs: number
@@ -16,92 +22,170 @@ interface DashboardStats {
   upcomingEvents: number
 }
 
-export default function Dashboard() {
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [error, setError] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    // If already authenticated, go straight to dashboard.
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) router.replace("/dashboard")
+    })
+  }, [router])
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
+
+    setLoading(false)
+    if (signInErr) {
+      setError(signInErr.message)
+      return
+    }
+    router.replace("/dashboard")
+  }
+
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-background">
+      <div className="w-full max-w-md p-4">
+        <div className="flex justify-center mb-4">
+          <Image src="/church-logo.png" alt="Church Logo" width={64} height={64} className="rounded-md" priority />
+        </div>
+
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Iniciar sesión</CardTitle>
+            <CardDescription>Accede al gestor del equipo de adoración</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              {error && <div className="text-sm text-red-600">{error}</div>}
+              <Button className="w-full" type="submit" disabled={loading}>
+                {loading ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="sr-only">{"Inicio de sesión. Introduce tus credenciales para continuar."}</p>
+      </div>
+    </div>
+  )
+}
+
+export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalSongs: 0,
     totalMembers: 0,
     totalSetlists: 0,
-    upcomingEvents: 0
+    upcomingEvents: 0,
   })
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
   const [recentSongs, setRecentSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "disconnected">("checking")
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setError(null)
-        setConnectionStatus('checking')
-        
-        console.log('🔍 Checking environment variables...')
-        console.log('SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET ✅' : 'MISSING ❌')
-        console.log('SUPABASE_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'SET ✅' : 'MISSING ❌')
-        
+        setConnectionStatus("checking")
+
+        console.log("🔍 Checking environment variables...")
+        console.log("SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "SET ✅" : "MISSING ❌")
+        console.log("SUPABASE_KEY:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "SET ✅" : "MISSING ❌")
+
         // Check if environment variables are set
         if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-          console.log('❌ Environment variables missing')
-          setError('env_missing')
-          setConnectionStatus('disconnected')
+          console.log("❌ Environment variables missing")
+          setError("env_missing")
+          setConnectionStatus("disconnected")
           setLoading(false)
           return
         }
-        
-        console.log('🔗 Testing database connection...')
+
+        console.log("🔗 Testing database connection...")
         // Test database connection
         const isConnected = await testConnection()
         if (!isConnected) {
-          console.log('❌ Database connection failed')
-          setError('connection_failed')
-          setConnectionStatus('disconnected')
+          console.log("❌ Database connection failed")
+          setError("connection_failed")
+          setConnectionStatus("disconnected")
           setLoading(false)
           return
         }
-        
-        console.log('✅ Database connection successful')
-        setConnectionStatus('connected')
-        
-        console.log('📊 Loading dashboard data...')
+
+        console.log("✅ Database connection successful")
+        setConnectionStatus("connected")
+
+        console.log("📊 Loading dashboard data...")
         // Load real data from Supabase
         const [statsData, eventsData, songsData] = await Promise.allSettled([
           dashboardApi.getStats(),
           eventsApi.getUpcoming(),
-          dashboardApi.getRecentSongs()
+          dashboardApi.getRecentSongs(),
         ])
 
         // Handle stats
-        if (statsData.status === 'fulfilled') {
-          console.log('📈 Stats loaded:', statsData.value)
+        if (statsData.status === "fulfilled") {
+          console.log("📈 Stats loaded:", statsData.value)
           setStats(statsData.value)
         } else {
-          console.error('❌ Failed to load stats:', statsData.reason)
+          console.error("❌ Failed to load stats:", statsData.reason)
         }
 
         // Handle events
-        if (eventsData.status === 'fulfilled') {
-          console.log('📅 Events loaded:', eventsData.value)
+        if (eventsData.status === "fulfilled") {
+          console.log("📅 Events loaded:", eventsData.value)
           setUpcomingEvents(eventsData.value || [])
         } else {
-          console.error('❌ Failed to load events:', eventsData.reason)
+          console.error("❌ Failed to load events:", eventsData.reason)
         }
 
         // Handle songs
-        if (songsData.status === 'fulfilled') {
-          console.log('🎵 Songs loaded:', songsData.value)
+        if (songsData.status === "fulfilled") {
+          console.log("🎵 Songs loaded:", songsData.value)
           setRecentSongs(songsData.value || [])
         } else {
-          console.error('❌ Failed to load recent songs:', songsData.reason)
+          console.error("❌ Failed to load recent songs:", songsData.reason)
         }
-
       } catch (error: any) {
-        console.error('💥 Error loading dashboard data:', error)
-        if (error.message?.includes('Missing Supabase environment variables')) {
-          setError('env_missing')
+        console.error("💥 Error loading dashboard data:", error)
+        if (error.message?.includes("Missing Supabase environment variables")) {
+          setError("env_missing")
         } else {
-          setError('database_setup')
+          setError("database_setup")
         }
-        setConnectionStatus('disconnected')
+        setConnectionStatus("disconnected")
       } finally {
         setLoading(false)
       }
@@ -114,7 +198,7 @@ export default function Dashboard() {
     { label: "Total Songs", value: stats.totalSongs.toString(), icon: Music },
     { label: "Team Members", value: stats.totalMembers.toString(), icon: Users },
     { label: "Upcoming Events", value: stats.upcomingEvents.toString(), icon: Calendar },
-    { label: "Total Setlists", value: stats.totalSetlists.toString(), icon: FileText }
+    { label: "Total Setlists", value: stats.totalSetlists.toString(), icon: FileText },
   ]
 
   if (loading) {
@@ -148,14 +232,14 @@ export default function Dashboard() {
     )
   }
 
-  if (error === 'env_missing') {
+  if (error === "env_missing") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Worship Team Dashboard</h1>
           <p className="text-muted-foreground">Welcome to your worship team management system</p>
         </div>
-        
+
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-800">
@@ -171,13 +255,25 @@ export default function Dashboard() {
             <ol className="list-decimal list-inside space-y-2 mb-4">
               <li>Go to your Vercel project dashboard</li>
               <li>Navigate to Settings → Environment Variables</li>
-              <li>Add these environment variables:
+              <li>
+                Add these environment variables:
                 <pre className="bg-red-100 p-3 rounded mt-2 text-sm overflow-x-auto">
-{`NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+                  {`NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
                 </pre>
               </li>
-              <li>Get your credentials from your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">Supabase Dashboard</a> → Settings → API</li>
+              <li>
+                Get your credentials from your{" "}
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Supabase Dashboard
+                </a>{" "}
+                → Settings → API
+              </li>
               <li>Redeploy your application</li>
             </ol>
           </CardContent>
@@ -191,9 +287,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <Button disabled>Add New Song</Button>
-              <Button variant="outline" disabled>Create Setlist</Button>
-              <Button variant="outline" disabled>Add Team Member</Button>
-              <Button variant="outline" disabled>Export Tools</Button>
+              <Button variant="outline" disabled>
+                Create Setlist
+              </Button>
+              <Button variant="outline" disabled>
+                Add Team Member
+              </Button>
+              <Button variant="outline" disabled>
+                Export Tools
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -201,14 +303,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
     )
   }
 
-  if (error === 'connection_failed') {
+  if (error === "connection_failed") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Worship Team Dashboard</h1>
           <p className="text-muted-foreground">Welcome to your worship team management system</p>
         </div>
-        
+
         <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-yellow-800">
@@ -230,7 +332,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
             <p className="mb-4">To troubleshoot:</p>
             <ol className="list-decimal list-inside space-y-2 mb-4">
               <li>Verify your environment variables in Vercel project settings</li>
-              <li>Check your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">Supabase Dashboard</a></li>
+              <li>
+                Check your{" "}
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Supabase Dashboard
+                </a>
+              </li>
               <li>Ensure your project is active and not paused</li>
               <li>Check browser console for detailed error messages</li>
               <li>Try redeploying your application</li>
@@ -246,9 +358,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
           <CardContent>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <Button disabled>Add New Song</Button>
-              <Button variant="outline" disabled>Create Setlist</Button>
-              <Button variant="outline" disabled>Add Team Member</Button>
-              <Button variant="outline" disabled>Export Tools</Button>
+              <Button variant="outline" disabled>
+                Create Setlist
+              </Button>
+              <Button variant="outline" disabled>
+                Add Team Member
+              </Button>
+              <Button variant="outline" disabled>
+                Export Tools
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -256,14 +374,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
     )
   }
 
-  if (error === 'database_setup') {
+  if (error === "database_setup") {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Worship Team Dashboard</h1>
           <p className="text-muted-foreground">Welcome to your worship team management system</p>
         </div>
-        
+
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-800">
@@ -277,10 +395,24 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
           <CardContent className="text-orange-700">
             <p className="mb-4">To set up your database:</p>
             <ol className="list-decimal list-inside space-y-2 mb-4">
-              <li>Go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">Supabase Dashboard</a></li>
+              <li>
+                Go to your{" "}
+                <a
+                  href="https://supabase.com/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Supabase Dashboard
+                </a>
+              </li>
               <li>Navigate to SQL Editor</li>
-              <li>Run the <code className="bg-orange-100 px-2 py-1 rounded">create-tables.sql</code> script</li>
-              <li>Run the <code className="bg-orange-100 px-2 py-1 rounded">seed-data.sql</code> script</li>
+              <li>
+                Run the <code className="bg-orange-100 px-2 py-1 rounded">create-tables.sql</code> script
+              </li>
+              <li>
+                Run the <code className="bg-orange-100 px-2 py-1 rounded">seed-data.sql</code> script
+              </li>
               <li>Refresh this page</li>
             </ol>
             <p>Once the database is set up, you'll see your worship team data here.</p>
@@ -320,33 +452,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
           <h1 className="text-3xl font-bold">Worship Team Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your worship team.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {connectionStatus === 'connected' ? (
-            <>
-              <Wifi className="h-4 w-4 text-green-500" />
-              <span className="text-green-600 font-medium">Connected to Supabase</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4 text-red-500" />
-              <span className="text-red-600 font-medium">Disconnected</span>
-            </>
-          )}
-        </div>
       </div>
-
-      {/* Connection Success Notice */}
-      <Card className="border-green-200 bg-green-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-green-800">
-            <Wifi className="h-5 w-5" />
-            Database Connected Successfully
-          </CardTitle>
-          <CardDescription className="text-green-700">
-            Your application is now connected to Supabase and displaying real data from your database.
-          </CardDescription>
-        </CardHeader>
-      </Card>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -384,7 +490,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
                       {event.event_date} {event.event_time && `at ${event.event_time}`}
                     </div>
                     {event.setlists && (
-                      <Badge variant="outline" className="mt-1">{event.setlists.name}</Badge>
+                      <Badge variant="outline" className="mt-1">
+                        {event.setlists.name}
+                      </Badge>
                     )}
                   </div>
                   <Button variant="outline" size="sm" asChild>
@@ -420,7 +528,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}
                   <div>
                     <div className="font-medium">{song.title}</div>
                     <div className="text-sm text-muted-foreground">
-                      Key: {song.key || 'N/A'} • Last used: {song.last_used || 'Never'}
+                      Key: {song.key || "N/A"} • Last used: {song.last_used || "Never"}
                     </div>
                   </div>
                   <Button variant="outline" size="sm" asChild>

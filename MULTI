@@ -1,5 +1,33 @@
+// lib/database.ts
+export async function testConnection() {
+  try {
+    console.log('🔍 Testing Supabase connection...')
+    const { data, error, status, statusText } = await supabase
+      .from('churches')
+      .select('id')
+      .limit(1)
+
+    if (error) {
+      console.error('❌ Connection test failed:', { status, statusText, message: error.message, code: error.code })
+      if (error.message?.includes('404')) {
+        console.error('💡 Tip: Make sure you are using the API URL, not the dashboard URL')
+        console.error('💡 API URL format: https://your-project-id.supabase.co')
+      }
+      return false
+    }
+
+    console.log('✅ Connection test successful')
+    return true
+  } catch (error) {
+    console.error('❌ Connection test error:', error)
+    return false
+  }
+}
+
+// app/settings/page.tsx
 "use client"
 
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,83 +36,53 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Save, Church, Bell, Database } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Save, Church, Bell, Database } from 'lucide-react'
 import { Wifi, WifiOff, AlertCircle, RefreshCcw, Database as DbIcon } from "lucide-react"
+
+type HealthResponse = {
+  env: { urlSet: boolean; keySet: boolean; envOk: boolean }
+  connected: boolean | null
+  schemaOk: boolean | null
+  stats:
+    | { totalSongs: number; totalMembers: number; totalSetlists: number; upcomingEvents: number }
+    | null
+}
 
 export default function SettingsPage() {
   const [checking, setChecking] = useState(true)
-  const [envOk, setEnvOk] = useState<boolean>(false)
+  const [envUrlSet, setEnvUrlSet] = useState(false)
+  const [envKeySet, setEnvKeySet] = useState(false)
+  const [envOk, setEnvOk] = useState(false)
   const [connected, setConnected] = useState<boolean | null>(null)
   const [schemaOk, setSchemaOk] = useState<boolean | null>(null)
   const [stats, setStats] = useState<{ songs: number; members: number; setlists: number; upcoming: number } | null>(
-    null,
+    null
   )
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   async function runChecks() {
     try {
       setChecking(true)
       setErrorMsg(null)
 
-      const hasEnv = Boolean(envUrl) && Boolean(envKey)
-      setEnvOk(hasEnv)
+      const res = await fetch("/api/health", { cache: "no-store" })
+      if (!res.ok) throw new Error("Health check failed")
+      const data: HealthResponse = await res.json()
 
-      if (!hasEnv) {
-        setConnected(false)
-        setSchemaOk(null)
-        setStats(null)
-        return
-      }
+      setEnvUrlSet(data.env.urlSet)
+      setEnvKeySet(data.env.keySet)
+      setEnvOk(data.env.envOk)
+      setConnected(data.connected)
+      setSchemaOk(data.schemaOk)
 
-      // Dynamic import to avoid evaluating supabase when env is missing
-      const { testConnection, dashboardApi } = await import("@/lib/database")
-      const ok = await testConnection()
-      setConnected(ok)
-
-      if (!ok) {
-        setSchemaOk(null)
-        setStats(null)
-        return
-      }
-
-      // Check if schema (tables) exists by probing a known table
-      try {
-        const { supabase } = await import("@/lib/supabase")
-        const { error } = await supabase.from("songs").select("id").limit(1)
-        if (error) {
-          // If relation missing (Postgres code 42P01), mark schema not ready
-          const relMissing =
-            error.code === "42P01" ||
-            (typeof error.message === "string" &&
-              error.message.toLowerCase().includes("relation") &&
-              error.message.toLowerCase().includes("does not exist"))
-          setSchemaOk(!relMissing)
-          if (relMissing) {
-            setStats(null)
-            return
-          }
-        } else {
-          setSchemaOk(true)
-        }
-      } catch (e: any) {
-        setSchemaOk(false)
-      }
-
-      // Load quick stats (non-blocking)
-      try {
-        const s = await dashboardApi.getStats()
+      if (data.stats) {
         setStats({
-          songs: s.totalSongs ?? 0,
-          members: s.totalMembers ?? 0,
-          setlists: s.totalSetlists ?? 0,
-          upcoming: s.upcomingEvents ?? 0,
+          songs: data.stats.totalSongs ?? 0,
+          members: data.stats.totalMembers ?? 0,
+          setlists: data.stats.totalSetlists ?? 0,
+          upcoming: data.stats.upcomingEvents ?? 0,
         })
-      } catch {
-        // If stats fail, keep connection info but skip stats
+      } else {
         setStats(null)
       }
     } catch (e: any) {
@@ -99,7 +97,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     runChecks()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
@@ -124,14 +121,14 @@ export default function SettingsPage() {
               <Label>Environment</Label>
               <div className="text-sm">
                 URL:{" "}
-                <span className={envOk ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                  {envUrl ? "SET" : "MISSING"}
+                <span className={envUrlSet ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                  {envUrlSet ? "SET" : "MISSING"}
                 </span>
               </div>
               <div className="text-sm">
                 ANON KEY:{" "}
-                <span className={envOk ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                  {envKey ? "SET" : "MISSING"}
+                <span className={envKeySet ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                  {envKeySet ? "SET" : "MISSING"}
                 </span>
               </div>
             </div>
@@ -206,7 +203,7 @@ export default function SettingsPage() {
                 <li>
                   Add:
                   <pre className="bg-red-50 border border-red-200 p-3 rounded mt-2 text-xs overflow-x-auto">{`NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}</pre>
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here`}</pre>
                 </li>
                 <li>Redeploy your application.</li>
               </ol>
