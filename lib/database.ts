@@ -10,33 +10,47 @@ function handleDatabaseError(error: any, operation: string) {
     message: error.message,
     details: error.details,
     hint: error.hint,
-    code: error.code
+    code: error.code,
+    statusCode: error.statusCode
   })
   
-  // Don't throw errors, return empty data instead for better UX
+  // Check for specific error types
+  if (error.statusCode === 404) {
+    console.error('❌ 404 Error: Check your SUPABASE_URL - it should be the API URL, not dashboard URL')
+    console.error('Correct format: https://your-project-id.supabase.co')
+  }
+  
   return null
 }
 
 // Test database connection
 export async function testConnection() {
   try {
-    console.log('Testing Supabase connection...')
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing')
-    console.log('Supabase Key:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing')
+    console.log('🔍 Testing Supabase connection...')
+    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('Supabase Key length:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length || 0)
     
-    const { data, error } = await supabase
+    // First test: Simple query
+    const { data, error, status, statusText } = await supabase
       .from('churches')
-      .select('count')
+      .select('id')
       .limit(1)
     
+    console.log('Response status:', status, statusText)
+    
     if (error) {
-      console.error('Connection test failed:', error)
+      console.error('❌ Connection test failed:', error)
+      if (error.message?.includes('404')) {
+        console.error('💡 Tip: Make sure you are using the API URL, not the dashboard URL')
+        console.error('💡 API URL format: https://your-project-id.supabase.co')
+      }
       return false
     }
-    console.log('Connection test successful')
+    
+    console.log('✅ Connection test successful')
     return true
   } catch (error) {
-    console.error('Connection test error:', error)
+    console.error('❌ Connection test error:', error)
     return false
   }
 }
@@ -83,19 +97,26 @@ export const songsApi = {
 
   async create(song: Omit<Song, 'id' | 'created_at' | 'updated_at'>) {
     try {
+      const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('songs')
-        .insert({ ...song, church_id: DEFAULT_CHURCH_ID })
+        .insert({ 
+          ...song, 
+          church_id: DEFAULT_CHURCH_ID,
+          created_at: now,
+          updated_at: now
+        })
         .select()
         .single()
       
       if (error) {
+        console.error('❌ Error creating song:', error)
         handleDatabaseError(error, 'create song')
         throw new Error(`Failed to create song: ${error.message}`)
       }
       return data
     } catch (error) {
-      console.error('Error in songsApi.create:', error)
+      console.error('❌ Error in songsApi.create:', error)
       throw error
     }
   },
@@ -200,19 +221,26 @@ export const membersApi = {
 
   async create(member: Omit<Member, 'id' | 'created_at' | 'updated_at'>) {
     try {
+      const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('members')
-        .insert({ ...member, church_id: DEFAULT_CHURCH_ID })
+        .insert({ 
+          ...member, 
+          church_id: DEFAULT_CHURCH_ID,
+          created_at: now,
+          updated_at: now
+        })
         .select()
         .single()
       
       if (error) {
+        console.error('❌ Error creating member:', error)
         handleDatabaseError(error, 'create member')
         throw new Error(`Failed to create member: ${error.message}`)
       }
       return data
     } catch (error) {
-      console.error('Error in membersApi.create:', error)
+      console.error('❌ Error in membersApi.create:', error)
       throw error
     }
   },
