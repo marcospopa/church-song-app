@@ -5,24 +5,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Search, Plus, MoreHorizontal, Edit, Trash, Eye } from 'lucide-react'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Search, Plus, MoreHorizontal, Edit, Trash, Eye } from "lucide-react"
 import Link from "next/link"
 import { songsApi } from "@/lib/database"
 import type { Song } from "@/lib/supabase"
+import SongPreviewModal from "@/components/modals/song-preview-modal"
 
 export default function SongsPage() {
   const [songs, setSongs] = useState<Song[]>([])
@@ -30,6 +29,12 @@ export default function SongsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedGenre, setSelectedGenre] = useState("All")
   const [loading, setLoading] = useState(true)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [songToDelete, setSongToDelete] = useState<Song | null>(null)
+
+  // Modal preview
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewSongId, setPreviewSongId] = useState<string | null>(null)
 
   useEffect(() => {
     loadSongs()
@@ -44,28 +49,34 @@ export default function SongsPage() {
       const data = await songsApi.getAll()
       setSongs(data)
     } catch (error) {
-      console.error('Error loading songs:', error)
+      console.error("Error loading songs:", error)
     } finally {
       setLoading(false)
     }
   }
 
   function filterSongs() {
-    let filtered = songs.filter(song => {
-      const matchesSearch = song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (song.artist && song.artist.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filtered = songs.filter((song) => {
+      const matchesSearch =
+        song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (song.artist && song.artist.toLowerCase().includes(searchTerm.toLowerCase()))
       const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre
       return matchesSearch && matchesGenre
     })
     setFilteredSongs(filtered)
   }
 
-  async function deleteSong(id: string) {
+  async function confirmDelete() {
+    if (!songToDelete) return
     try {
-      await songsApi.delete(id)
-      setSongs(songs.filter(song => song.id !== id))
+      await songsApi.delete(songToDelete.id)
+      setSongs(songs.filter((song) => song.id !== songToDelete.id))
     } catch (error) {
-      console.error('Error deleting song:', error)
+      console.error("Error deleting song:", error)
+      alert("No se pudo eliminar la canción.")
+    } finally {
+      setDeleteOpen(false)
+      setSongToDelete(null)
     }
   }
 
@@ -106,7 +117,6 @@ export default function SongsPage() {
         </Button>
       </div>
 
-      {/* Search and Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Search & Filter</CardTitle>
@@ -122,24 +132,21 @@ export default function SongsPage() {
                 className="pl-10"
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  Genre: {selectedGenre}
+            <div className="flex items-center gap-2">
+              {["All", "Hymn", "Contemporary", "Gospel"].map((g) => (
+                <Button
+                  key={g}
+                  variant={selectedGenre === g ? "secondary" : "outline"}
+                  onClick={() => setSelectedGenre(g)}
+                >
+                  {g}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSelectedGenre("All")}>All</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedGenre("Hymn")}>Hymn</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedGenre("Contemporary")}>Contemporary</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedGenre("Gospel")}>Gospel</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Songs Table */}
       <Card>
         <CardHeader>
           <CardTitle>Songs ({filteredSongs.length})</CardTitle>
@@ -164,20 +171,18 @@ export default function SongsPage() {
                 {filteredSongs.map((song) => (
                   <TableRow key={song.id}>
                     <TableCell className="font-medium">{song.title}</TableCell>
-                    <TableCell>{song.artist || 'Unknown'}</TableCell>
-                    <TableCell>
-                      {song.key && <Badge variant="outline">{song.key}</Badge>}
-                    </TableCell>
-                    <TableCell>{song.tempo ? `${song.tempo} BPM` : 'N/A'}</TableCell>
-                    <TableCell>{song.genre || 'N/A'}</TableCell>
-                    <TableCell>{song.last_used || 'Never'}</TableCell>
+                    <TableCell>{song.artist || "Unknown"}</TableCell>
+                    <TableCell>{song.key && <Badge variant="outline">{song.key}</Badge>}</TableCell>
+                    <TableCell>{song.tempo ? `${song.tempo} BPM` : "N/A"}</TableCell>
+                    <TableCell>{song.genre || "N/A"}</TableCell>
+                    <TableCell>{song.last_used || "Never"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {song.tags?.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
-                        )) || 'No tags'}
+                        )) || "No tags"}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -188,17 +193,27 @@ export default function SongsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setPreviewSongId(song.id)
+                              setPreviewOpen(true)
+                            }}
+                          >
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                          <DropdownMenuItem asChild>
+                            <Link href={`/songs/${song.id}`} className="flex items-center">
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => deleteSong(song.id)}
+                            onClick={() => {
+                              setSongToDelete(song)
+                              setDeleteOpen(true)
+                            }}
                           >
                             <Trash className="mr-2 h-4 w-4" />
                             Delete
@@ -220,6 +235,27 @@ export default function SongsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar canción?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <SongPreviewModal
+        open={previewOpen}
+        songId={previewSongId}
+        onOpenChange={(o) => {
+          if (!o) setPreviewOpen(false)
+        }}
+      />
     </div>
   )
 }
