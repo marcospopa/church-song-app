@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus } from 'lucide-react'
+import { X, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { songsApi } from "@/lib/database"
 
@@ -28,7 +30,7 @@ export default function NewSongPage() {
     copyright: "",
     lyrics: "",
     chords: "",
-    notes: ""
+    notes: "",
   })
 
   const addTag = () => {
@@ -39,11 +41,11 @@ export default function NewSongPage() {
   }
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
+    setTags(tags.filter((tag) => tag !== tagToRemove))
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,11 +53,16 @@ export default function NewSongPage() {
     setLoading(true)
 
     try {
+      console.log("Submitting song payload:", {
+        ...formData,
+        tags,
+        tempo: formData.tempo ? Number.parseInt(formData.tempo) : null,
+      })
       await songsApi.create({
         title: formData.title,
         artist: formData.artist || null,
         key: formData.key || null,
-        tempo: formData.tempo ? parseInt(formData.tempo) : null,
+        tempo: formData.tempo ? Number.parseInt(formData.tempo) : null,
         genre: formData.genre || null,
         duration: formData.duration || null,
         ccli_number: formData.ccli_number || null,
@@ -65,15 +72,12 @@ export default function NewSongPage() {
         notes: formData.notes || null,
         tags: tags.length > 0 ? tags : null,
         last_used: null,
-        church_id: '', // This will be set by the API
-        created_at: '',
-        updated_at: ''
       })
 
       router.push("/songs")
     } catch (error) {
-      console.error('Error creating song:', error)
-      alert('Error creating song. Please try again.')
+      console.error("Error creating song:", error)
+      alert("Error creating song. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -97,29 +101,29 @@ export default function NewSongPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Song Title *</Label>
-                <Input 
-                  id="title" 
-                  placeholder="Enter song title" 
-                  required 
+                <Input
+                  id="title"
+                  placeholder="Enter song title"
+                  required
                   value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="artist">Artist/Composer</Label>
-                <Input 
-                  id="artist" 
-                  placeholder="Enter artist name" 
+                <Input
+                  id="artist"
+                  placeholder="Enter artist name"
                   value={formData.artist}
-                  onChange={(e) => handleInputChange('artist', e.target.value)}
+                  onChange={(e) => handleInputChange("artist", e.target.value)}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="key">Key</Label>
-                  <Select value={formData.key} onValueChange={(value) => handleInputChange('key', value)}>
+                  <Select value={formData.key} onValueChange={(value) => handleInputChange("key", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select key" />
                     </SelectTrigger>
@@ -139,22 +143,22 @@ export default function NewSongPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="tempo">Tempo (BPM)</Label>
-                  <Input 
-                    id="tempo" 
-                    type="number" 
-                    placeholder="120" 
+                  <Input
+                    id="tempo"
+                    type="number"
+                    placeholder="120"
                     value={formData.tempo}
-                    onChange={(e) => handleInputChange('tempo', e.target.value)}
+                    onChange={(e) => handleInputChange("tempo", e.target.value)}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="genre">Genre</Label>
-                <Select value={formData.genre} onValueChange={(value) => handleInputChange('genre', value)}>
+                <Select value={formData.genre} onValueChange={(value) => handleInputChange("genre", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select genre" />
                   </SelectTrigger>
@@ -179,44 +183,41 @@ export default function NewSongPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="duration">Duration</Label>
-                <Input 
-                  id="duration" 
-                  placeholder="4:30" 
+                <Input
+                  id="duration"
+                  placeholder="4:30"
                   value={formData.duration}
-                  onChange={(e) => handleInputChange('duration', e.target.value)}
+                  onChange={(e) => handleInputChange("duration", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="ccli">CCLI Number</Label>
-                <Input 
-                  id="ccli" 
-                  placeholder="Enter CCLI number" 
+                <Input
+                  id="ccli"
+                  placeholder="Enter CCLI number"
                   value={formData.ccli_number}
-                  onChange={(e) => handleInputChange('ccli_number', e.target.value)}
+                  onChange={(e) => handleInputChange("ccli_number", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="copyright">Copyright</Label>
-                <Input 
-                  id="copyright" 
-                  placeholder="© 2024 Publisher" 
+                <Input
+                  id="copyright"
+                  placeholder="© 2024 Publisher"
                   value={formData.copyright}
-                  onChange={(e) => handleInputChange('copyright', e.target.value)}
+                  onChange={(e) => handleInputChange("copyright", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Tags</Label>
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                       {tag}
-                      <X 
-                        className="h-3 w-3 cursor-pointer" 
-                        onClick={() => removeTag(tag)}
-                      />
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
                     </Badge>
                   ))}
                 </div>
@@ -225,7 +226,7 @@ export default function NewSongPage() {
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
                     placeholder="Add tag"
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
                   />
                   <Button type="button" variant="outline" size="icon" onClick={addTag}>
                     <Plus className="h-4 w-4" />
@@ -245,23 +246,23 @@ export default function NewSongPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="lyrics">Lyrics</Label>
-              <Textarea 
-                id="lyrics" 
+              <Textarea
+                id="lyrics"
                 placeholder="Enter song lyrics here..."
                 className="min-h-[200px]"
                 value={formData.lyrics}
-                onChange={(e) => handleInputChange('lyrics', e.target.value)}
+                onChange={(e) => handleInputChange("lyrics", e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="chords">Chord Chart</Label>
-              <Textarea 
-                id="chords" 
+              <Textarea
+                id="chords"
                 placeholder="Enter chord progressions and structure..."
                 className="min-h-[150px] font-mono"
                 value={formData.chords}
-                onChange={(e) => handleInputChange('chords', e.target.value)}
+                onChange={(e) => handleInputChange("chords", e.target.value)}
               />
             </div>
           </CardContent>
@@ -274,11 +275,11 @@ export default function NewSongPage() {
             <CardDescription>Additional notes for the worship team</CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea 
+            <Textarea
               placeholder="Add any special notes, arrangements, or instructions..."
               className="min-h-[100px]"
               value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              onChange={(e) => handleInputChange("notes", e.target.value)}
             />
           </CardContent>
         </Card>
@@ -289,7 +290,7 @@ export default function NewSongPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : 'Save Song'}
+            {loading ? "Saving..." : "Save Song"}
           </Button>
         </div>
       </form>

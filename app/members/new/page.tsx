@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,14 +11,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { X, Plus } from 'lucide-react'
+import { X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { membersApi } from "@/lib/database"
 
 const availableInstruments = [
-  "Vocals", "Piano", "Keyboard", "Electric Guitar", "Acoustic Guitar", 
-  "Bass Guitar", "Drums", "Percussion", "Violin", "Cello", "Flute", 
-  "Trumpet", "Saxophone", "Clarinet", "Sound Tech", "Lighting"
+  "Vocals",
+  "Piano",
+  "Keyboard",
+  "Electric Guitar",
+  "Acoustic Guitar",
+  "Bass Guitar",
+  "Drums",
+  "Percussion",
+  "Violin",
+  "Cello",
+  "Flute",
+  "Trumpet",
+  "Saxophone",
+  "Clarinet",
+  "Sound Tech",
+  "Lighting",
 ]
 
 export default function NewMemberPage() {
@@ -29,24 +44,28 @@ export default function NewMemberPage() {
     phone: "",
     role: "",
     status: "active",
-    notes: ""
+    notes: "",
   })
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const toggleInstrument = (instrument: string) => {
-    setSelectedInstruments(prev => 
-      prev.includes(instrument)
-        ? prev.filter(i => i !== instrument)
-        : [...prev, instrument]
+    setSelectedInstruments((prev) =>
+      prev.includes(instrument) ? prev.filter((i) => i !== instrument) : [...prev, instrument],
     )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+
+    console.log("Submitting member payload:", {
+      ...formData,
+      instruments: selectedInstruments,
+      join_date: new Date().toISOString().split("T")[0],
+    })
 
     try {
       await membersApi.create({
@@ -57,17 +76,14 @@ export default function NewMemberPage() {
         instruments: selectedInstruments.length > 0 ? selectedInstruments : null,
         status: formData.status,
         notes: formData.notes || null,
-        join_date: new Date().toISOString().split('T')[0],
+        join_date: new Date().toISOString().split("T")[0],
         avatar_url: null,
-        church_id: '', // This will be set by the API
-        created_at: '',
-        updated_at: ''
       })
 
       router.push("/members")
     } catch (error) {
-      console.error('Error creating member:', error)
-      alert('Error creating member. Please try again.')
+      console.error("Error creating member:", error)
+      alert("Error creating member. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -91,41 +107,41 @@ export default function NewMemberPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name *</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Enter full name" 
-                  required 
+                <Input
+                  id="name"
+                  placeholder="Enter full name"
+                  required
                   value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address *</Label>
-                <Input 
-                  id="email" 
+                <Input
+                  id="email"
                   type="email"
-                  placeholder="Enter email address" 
+                  placeholder="Enter email address"
                   required
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input 
-                  id="phone" 
+                <Input
+                  id="phone"
                   type="tel"
-                  placeholder="(555) 123-4567" 
+                  placeholder="(555) 123-4567"
                   value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="role">Role/Position</Label>
-                <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -145,7 +161,7 @@ export default function NewMemberPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -179,7 +195,7 @@ export default function NewMemberPage() {
                   </div>
                 ))}
               </div>
-              
+
               {selectedInstruments.length > 0 && (
                 <div className="space-y-2">
                   <Label>Selected Instruments:</Label>
@@ -187,10 +203,7 @@ export default function NewMemberPage() {
                     {selectedInstruments.map((instrument) => (
                       <Badge key={instrument} variant="secondary" className="flex items-center gap-1">
                         {instrument}
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
-                          onClick={() => toggleInstrument(instrument)}
-                        />
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => toggleInstrument(instrument)} />
                       </Badge>
                     ))}
                   </div>
@@ -207,11 +220,11 @@ export default function NewMemberPage() {
             <CardDescription>Any additional information about this team member</CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea 
+            <Textarea
               placeholder="Add any special notes, availability, or other relevant information..."
               className="min-h-[100px]"
               value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
+              onChange={(e) => handleInputChange("notes", e.target.value)}
             />
           </CardContent>
         </Card>
@@ -222,7 +235,7 @@ export default function NewMemberPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={loading}>
-            {loading ? 'Adding Member...' : 'Add Member'}
+            {loading ? "Adding Member..." : "Add Member"}
           </Button>
         </div>
       </form>
